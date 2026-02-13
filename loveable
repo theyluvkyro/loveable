@@ -124,6 +124,7 @@ function Loveable:Create(config)
         ShowBottomLabel = config.ShowBottomLabel ~= false,
         BottomLabelText = config.BottomLabelText or "Loveable",
         Key = config.Key, -- Optional key system
+        HomePage = config.HomePage, -- Optional home page content
     }
     
     -- Merge theme with defaults
@@ -530,9 +531,26 @@ function Loveable:CreateBottomBar()
         self.ControlsContainer.Size = UDim2.new(0, ControlsLayout.AbsoluteContentSize.X, 0, theme.ControlSize)
     end)
     
+    -- Add Home button if HomePage is configured
+    if self.Config.HomePage then
+        self:CreateControlButton({
+            Icon = "🏠",
+            Name = "Home",
+            Callback = function()
+                if self.CurrentPage == "Home" then
+                    -- Already on home, close it
+                    self:ClosePage()
+                else
+                    -- Open home page
+                    self:OpenHomePage()
+                end
+            end
+        }, 0)
+    end
+    
     -- Create bottom controls
     for index, controlData in ipairs(self.Config.BottomControls) do
-        self:CreateControlButton(controlData, index)
+        self:CreateControlButton(controlData, index + (self.Config.HomePage and 1 or 0))
     end
     
     -- Bottom label
@@ -977,7 +995,38 @@ function Loveable:PlayIntroAnimation()
         
         -- Clean up
         IntroGui:Destroy()
+        
+        -- Show home page if configured
+        if self.Config.HomePage then
+            self:OpenHomePage()
+        end
     end)
+end
+
+function Loveable:OpenHomePage()
+    -- Open the UI
+    self:Open()
+    
+    -- Show home page if it exists
+    if self.Config.HomePage then
+        -- Hide apps and search
+        self.AppsContainer.Visible = false
+        self.SearchBar.Visible = false
+        
+        -- Clear existing page content
+        for _, child in pairs(self.PagesContainer:GetChildren()) do
+            child:Destroy()
+        end
+        
+        -- Show pages container
+        self.PagesContainer.Visible = true
+        self.CurrentPage = "Home"
+        
+        -- Create home page content
+        if self.Config.HomePage.CreateContent then
+            pcall(self.Config.HomePage.CreateContent, self.PagesContainer)
+        end
+    end
 end
 
 function Loveable:SetupKeybind()
