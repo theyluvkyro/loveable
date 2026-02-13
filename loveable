@@ -233,7 +233,6 @@ function Loveable:CreateUI()
     self:CreateAppsSection()
     self:CreateBottomBar()
     self:CreateCloseButton()
-    self:CreatePagesContainer() -- NEW: Pages container
 end
 
 function Loveable:CreateSearchBar()
@@ -635,26 +634,7 @@ function Loveable:CreateCloseButton()
         Tween(self.CloseButton, {BackgroundColor3 = theme.CloseBackground}, 0.2)
     end)
     
-    self.CloseButton.MouseButton1Click:Connect(function()
-        if self.CurrentPage then
-            self:ClosePage()
-        else
-            self:Close()
-        end
-    end)
-end
-
--- NEW: Pages System
-function Loveable:CreatePagesContainer()
-    self.PagesContainer = CreateInstance("Frame", {
-        Name = "PagesContainer",
-        Size = UDim2.new(1, 0, 1, 0),
-        Position = UDim2.new(0, 0, 0, 0),
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        Visible = false,
-        Parent = self.Panel
-    })
+    self.CloseButton.MouseButton1Click:Connect(function() self:Close() end)
 end
 
 function Loveable:OpenPage(pageName)
@@ -672,40 +652,135 @@ function Loveable:OpenPage(pageName)
         return
     end
     
-    -- Hide apps and search
-    self.AppsContainer.Visible = false
-    self.SearchBar.Visible = false
+    local theme = self.Config.Theme
     
-    -- Clear existing page content
-    for _, child in pairs(self.PagesContainer:GetChildren()) do
-        child:Destroy()
-    end
+    -- Create separate ScreenGui for the page
+    local PageGui = CreateInstance("ScreenGui", {
+        Name = "LoveablePage_" .. pageName,
+        ResetOnSpawn = false,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+        DisplayOrder = 999999,
+        Parent = self.ScreenGui.Parent
+    })
     
-    -- Show pages container
-    self.PagesContainer.Visible = true
-    self.CurrentPage = pageName
+    -- Page Window (draggable)
+    local PageWindow = CreateInstance("Frame", {
+        Name = "PageWindow",
+        Size = UDim2.new(0, theme.PanelWidth, 0, theme.PanelHeight),
+        Position = UDim2.new(0.5, 50, 0.5, 50), -- Offset from main UI
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = theme.PanelBackground,
+        BackgroundTransparency = theme.PanelTransparency,
+        BorderSizePixel = 0,
+        Parent = PageGui
+    })
+    CreateCorner(PageWindow, theme.PanelCornerRadius)
+    CreateStroke(PageWindow, theme.PanelBorder, theme.PanelBorderThickness, theme.PanelBorderTransparency)
+    
+    -- Title Bar (for dragging)
+    local TitleBar = CreateInstance("Frame", {
+        Name = "TitleBar",
+        Size = UDim2.new(1, 0, 0, 40),
+        Position = UDim2.new(0, 0, 0, 0),
+        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+        BackgroundTransparency = 0.97,
+        BorderSizePixel = 0,
+        Parent = PageWindow
+    })
+    CreateCorner(TitleBar, theme.PanelCornerRadius)
+    
+    -- Title Text
+    CreateInstance("TextLabel", {
+        Size = UDim2.new(1, -50, 1, 0),
+        Position = UDim2.new(0, 15, 0, 0),
+        BackgroundTransparency = 1,
+        Text = pageName,
+        TextSize = 16,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        Font = Enum.Font.GothamBold,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = TitleBar
+    })
+    
+    -- Close Button
+    local PageCloseButton = CreateInstance("TextButton", {
+        Name = "CloseButton",
+        Size = UDim2.new(0, 30, 0, 30),
+        Position = UDim2.new(1, -35, 0, 5),
+        BackgroundColor3 = theme.CloseBackground,
+        BackgroundTransparency = 0.2,
+        BorderSizePixel = 0,
+        Text = "✕",
+        TextSize = 16,
+        TextColor3 = theme.CloseTextColor,
+        Font = theme.FontBold,
+        AutoButtonColor = false,
+        Parent = TitleBar
+    })
+    CreateCorner(PageCloseButton, 6)
+    
+    PageCloseButton.MouseEnter:Connect(function()
+        Tween(PageCloseButton, {BackgroundColor3 = theme.CloseHoverBackground}, 0.2)
+    end)
+    PageCloseButton.MouseLeave:Connect(function()
+        Tween(PageCloseButton, {BackgroundColor3 = theme.CloseBackground}, 0.2)
+    end)
+    PageCloseButton.MouseButton1Click:Connect(function()
+        PageGui:Destroy()
+    end)
+    
+    -- Content Container
+    local ContentContainer = CreateInstance("Frame", {
+        Name = "ContentContainer",
+        Size = UDim2.new(1, -40, 1, -60),
+        Position = UDim2.new(0, 20, 0, 50),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Parent = PageWindow
+    })
     
     -- Create page content
     if pageData.CreateContent then
-        pcall(pageData.CreateContent, self.PagesContainer)
-    end
-end
-
-function Loveable:ClosePage()
-    -- Hide page
-    self.PagesContainer.Visible = false
-    
-    -- Hide home container if it exists
-    if self.HomeContainer then
-        self.HomeContainer:Destroy()
-        self.HomeContainer = nil
+        pcall(pageData.CreateContent, ContentContainer)
     end
     
-    self.CurrentPage = nil
+    -- Setup dragging
+    local dragging = false
+    local dragInput
+    local dragStart
+    local startPos
     
-    -- Show apps and search
-    self.AppsContainer.Visible = true
-    self.SearchBar.Visible = true
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = PageWindow.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            PageWindow.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
 end
 
 function Loveable:ShowKeySystem(callback)
@@ -864,113 +939,26 @@ function Loveable:PlayIntroAnimation()
         Parent = IntroGui
     })
     
-    -- Heart Container (for scale animation)
-    local HeartContainer = CreateInstance("Frame", {
-        Name = "HeartContainer",
-        Size = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, 0, 0.35, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundTransparency = 1,
-        Parent = Background
-    })
-    
-    -- White Heart Symbol
-    local HeartText = CreateInstance("TextLabel", {
-        Name = "HeartText",
-        Size = UDim2.new(1, 0, 1, 0),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundTransparency = 1,
-        Text = "♥",
-        TextSize = 100,
-        TextColor3 = Color3.fromRGB(255, 255, 255),
-        Font = Enum.Font.GothamBold,
-        TextTransparency = 0,
-        Parent = HeartContainer
-    })
-    
     -- Title Text
     local TitleText = CreateInstance("TextLabel", {
         Name = "TitleText",
         Size = UDim2.new(0, 400, 0, 50),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Position = UDim2.new(0.5, 0, 0.45, 0),
         AnchorPoint = Vector2.new(0.5, 0.5),
         BackgroundTransparency = 1,
         Text = "Loveable",
-        TextSize = 42,
+        TextSize = 48,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         Font = Enum.Font.GothamBold,
         TextTransparency = 1,
         Parent = Background
     })
     
-    -- Stats Container
-    local StatsContainer = CreateInstance("Frame", {
-        Name = "StatsContainer",
-        Size = UDim2.new(0, 400, 0, 100),
-        Position = UDim2.new(0.5, 0, 0.65, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundTransparency = 1,
-        Parent = Background
-    })
-    
-    -- Stats Layout
-    local StatsLayout = CreateInstance("UIListLayout", {
-        FillDirection = Enum.FillDirection.Horizontal,
-        HorizontalAlignment = Enum.HorizontalAlignment.Center,
-        Padding = UDim.new(0, 20),
-        Parent = StatsContainer
-    })
-    
-    -- Helper to create stat boxes (glass)
-    local function createStatBox(label, value)
-        local StatBox = CreateInstance("Frame", {
-            Size = UDim2.new(0, 120, 0, 80),
-            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-            BorderSizePixel = 0,
-            BackgroundTransparency = 0.95,
-            Parent = StatsContainer
-        })
-        CreateCorner(StatBox, 10)
-        CreateStroke(StatBox, Color3.fromRGB(255, 255, 255), 1, 0.9)
-        
-        local ValueLabel = CreateInstance("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 35),
-            Position = UDim2.new(0, 0, 0, 15),
-            BackgroundTransparency = 1,
-            Text = value,
-            TextSize = 28,
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            Font = Enum.Font.GothamBold,
-            TextTransparency = 1,
-            Parent = StatBox
-        })
-        
-        local LabelText = CreateInstance("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 20),
-            Position = UDim2.new(0, 0, 0, 50),
-            BackgroundTransparency = 1,
-            Text = label,
-            TextSize = 12,
-            TextColor3 = Color3.fromRGB(200, 200, 200),
-            Font = Enum.Font.Gotham,
-            TextTransparency = 1,
-            Parent = StatBox
-        })
-        
-        return StatBox, ValueLabel, LabelText
-    end
-    
-    -- Create stat boxes
-    local appsBox, appsValue, appsLabel = createStatBox("Apps", tostring(#self.Config.Apps))
-    local pagesBox, pagesValue, pagesLabel = createStatBox("Pages", tostring(#self.Config.Pages))
-    local controlsBox, controlsValue, controlsLabel = createStatBox("Controls", tostring(#self.Config.BottomControls))
-    
     -- Loading Bar Background
     local LoadingBarBg = CreateInstance("Frame", {
         Name = "LoadingBarBg",
         Size = UDim2.new(0, 300, 0, 3),
-        Position = UDim2.new(0.5, 0, 0.82, 0),
+        Position = UDim2.new(0.5, 0, 0.55, 0),
         AnchorPoint = Vector2.new(0.5, 0.5),
         BackgroundColor3 = Color3.fromRGB(255, 255, 255),
         BackgroundTransparency = 0.9,
@@ -989,74 +977,30 @@ function Loveable:PlayIntroAnimation()
         Parent = LoadingBarBg
     })
     
-    -- Loading Text
-    local LoadingText = CreateInstance("TextLabel", {
-        Size = UDim2.new(0, 300, 0, 20),
-        Position = UDim2.new(0.5, 0, 0.88, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundTransparency = 1,
-        Text = "Loading...",
-        TextSize = 12,
-        TextColor3 = Color3.fromRGB(200, 200, 200),
-        Font = Enum.Font.Gotham,
-        TextTransparency = 1,
-        Parent = Background
-    })
-    
     -- ANIMATION SEQUENCE
     task.spawn(function()
-        task.wait(0.2)
+        task.wait(0.3)
         
-        -- Step 1: Heart scales up (0.6s)
-        Tween(HeartContainer, {Size = UDim2.new(0, 120, 0, 120)}, 0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-        
-        task.wait(0.4)
-        
-        -- Step 2: Title fades in (0.3s)
-        Tween(TitleText, {TextTransparency = 0}, 0.3, Enum.EasingStyle.Quad)
+        -- Step 1: Title fades in (0.4s)
+        Tween(TitleText, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
         
         task.wait(0.3)
         
-        -- Step 3: Stats boxes fade in (0.4s)
-        Tween(appsBox, {BackgroundTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
-        Tween(pagesBox, {BackgroundTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
-        Tween(controlsBox, {BackgroundTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
-        Tween(appsValue, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
-        Tween(pagesValue, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
-        Tween(controlsValue, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
-        Tween(appsLabel, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
-        Tween(pagesLabel, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
-        Tween(controlsLabel, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
-        
-        task.wait(0.3)
-        
-        -- Step 4: Loading bar appears (0.2s)
-        Tween(LoadingBarBg, {BackgroundTransparency = 0}, 0.2, Enum.EasingStyle.Quad)
-        Tween(LoadingText, {TextTransparency = 0}, 0.2, Enum.EasingStyle.Quad)
+        -- Step 2: Loading bar appears (0.2s)
+        Tween(LoadingBarBg, {BackgroundTransparency = 0.9}, 0.2, Enum.EasingStyle.Quad)
         
         task.wait(0.2)
         
-        -- Step 5: Loading bar fills (1s)
-        Tween(LoadingBarFill, {Size = UDim2.new(1, 0, 1, 0)}, 1, Enum.EasingStyle.Quad)
+        -- Step 3: Loading bar fills (1.2s)
+        Tween(LoadingBarFill, {Size = UDim2.new(1, 0, 1, 0)}, 1.2, Enum.EasingStyle.Quad)
         
-        task.wait(1.1)
+        task.wait(1.3)
         
-        -- Step 6: Everything fades out (0.4s)
+        -- Step 4: Everything fades out (0.4s)
         Tween(Background, {BackgroundTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
-        Tween(HeartText, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
         Tween(TitleText, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
-        Tween(appsBox, {BackgroundTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
-        Tween(pagesBox, {BackgroundTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
-        Tween(controlsBox, {BackgroundTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
-        Tween(appsValue, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
-        Tween(pagesValue, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
-        Tween(controlsValue, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
-        Tween(appsLabel, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
-        Tween(pagesLabel, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
-        Tween(controlsLabel, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
         Tween(LoadingBarBg, {BackgroundTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
         Tween(LoadingBarFill, {BackgroundTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
-        Tween(LoadingText, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
         
         task.wait(0.5)
         
@@ -1242,11 +1186,6 @@ function Loveable:Close()
     if self.SearchBox then
         self.SearchBox.Text = ""
         self.SearchBox:ReleaseFocus()
-    end
-    
-    -- Close any open pages
-    if self.CurrentPage then
-        self:ClosePage()
     end
     
     local theme = self.Config.Theme
