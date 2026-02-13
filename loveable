@@ -882,11 +882,11 @@ function Loveable:PlayIntroAnimation()
         Parent = IntroGui
     })
     
-    -- Heart Image Container (for scale animation)
+    -- Heart Container (for scale animation)
     local HeartContainer = CreateInstance("Frame", {
         Name = "HeartContainer",
         Size = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, 0, 0.5, -40),
+        Position = UDim2.new(0.5, 0, 0.35, 0),
         AnchorPoint = Vector2.new(0.5, 0.5),
         BackgroundTransparency = 1,
         Parent = Background
@@ -900,7 +900,7 @@ function Loveable:PlayIntroAnimation()
         AnchorPoint = Vector2.new(0.5, 0.5),
         BackgroundTransparency = 1,
         Text = "♥",
-        TextSize = 120,
+        TextSize = 100,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         Font = Enum.Font.GothamBold,
         TextTransparency = 0,
@@ -910,40 +910,87 @@ function Loveable:PlayIntroAnimation()
     -- Title Text
     local TitleText = CreateInstance("TextLabel", {
         Name = "TitleText",
-        Size = UDim2.new(0, 400, 0, 60),
-        Position = UDim2.new(0.5, 0, 0.5, 110),
+        Size = UDim2.new(0, 400, 0, 50),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
         AnchorPoint = Vector2.new(0.5, 0.5),
         BackgroundTransparency = 1,
         Text = "Loveable",
-        TextSize = 48,
+        TextSize = 42,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         Font = Enum.Font.GothamBold,
         TextTransparency = 1,
         Parent = Background
     })
     
-    -- Subtitle Text
-    local SubtitleText = CreateInstance("TextLabel", {
-        Name = "SubtitleText",
-        Size = UDim2.new(0, 400, 0, 30),
-        Position = UDim2.new(0.5, 0, 0.5, 160),
+    -- Stats Container
+    local StatsContainer = CreateInstance("Frame", {
+        Name = "StatsContainer",
+        Size = UDim2.new(0, 400, 0, 100),
+        Position = UDim2.new(0.5, 0, 0.65, 0),
         AnchorPoint = Vector2.new(0.5, 0.5),
         BackgroundTransparency = 1,
-        Text = "The Ultimate UI Library",
-        TextSize = 16,
-        TextColor3 = Color3.fromRGB(200, 200, 200),
-        Font = Enum.Font.Gotham,
-        TextTransparency = 1,
         Parent = Background
     })
+    
+    -- Stats Layout
+    local StatsLayout = CreateInstance("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        Padding = UDim.new(0, 20),
+        Parent = StatsContainer
+    })
+    
+    -- Helper to create stat boxes
+    local function createStatBox(label, value)
+        local StatBox = CreateInstance("Frame", {
+            Size = UDim2.new(0, 120, 0, 80),
+            BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+            BorderSizePixel = 0,
+            BackgroundTransparency = 1,
+            Parent = StatsContainer
+        })
+        CreateCorner(StatBox, 10)
+        CreateStroke(StatBox, Color3.fromRGB(60, 60, 60), 1, 0.3)
+        
+        local ValueLabel = CreateInstance("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 35),
+            Position = UDim2.new(0, 0, 0, 15),
+            BackgroundTransparency = 1,
+            Text = value,
+            TextSize = 28,
+            TextColor3 = Color3.fromRGB(255, 255, 255),
+            Font = Enum.Font.GothamBold,
+            TextTransparency = 1,
+            Parent = StatBox
+        })
+        
+        local LabelText = CreateInstance("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 20),
+            Position = UDim2.new(0, 0, 0, 50),
+            BackgroundTransparency = 1,
+            Text = label,
+            TextSize = 12,
+            TextColor3 = Color3.fromRGB(150, 150, 150),
+            Font = Enum.Font.Gotham,
+            TextTransparency = 1,
+            Parent = StatBox
+        })
+        
+        return StatBox, ValueLabel, LabelText
+    end
+    
+    -- Create stat boxes
+    local appsBox, appsValue, appsLabel = createStatBox("Apps", tostring(#self.Config.Apps))
+    local pagesBox, pagesValue, pagesLabel = createStatBox("Pages", tostring(#self.Config.Pages))
+    local controlsBox, controlsValue, controlsLabel = createStatBox("Controls", tostring(#self.Config.BottomControls))
     
     -- Loading Bar Background
     local LoadingBarBg = CreateInstance("Frame", {
         Name = "LoadingBarBg",
         Size = UDim2.new(0, 300, 0, 3),
-        Position = UDim2.new(0.5, 0, 0.5, 210),
+        Position = UDim2.new(0.5, 0, 0.82, 0),
         AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = Color3.fromRGB(60, 60, 60),
+        BackgroundColor3 = Color3.fromRGB(40, 40, 40),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         Parent = Background
@@ -960,46 +1007,76 @@ function Loveable:PlayIntroAnimation()
         Parent = LoadingBarBg
     })
     
+    -- Loading Text
+    local LoadingText = CreateInstance("TextLabel", {
+        Size = UDim2.new(0, 300, 0, 20),
+        Position = UDim2.new(0.5, 0, 0.88, 0),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundTransparency = 1,
+        Text = "Loading...",
+        TextSize = 12,
+        TextColor3 = Color3.fromRGB(150, 150, 150),
+        Font = Enum.Font.Gotham,
+        TextTransparency = 1,
+        Parent = Background
+    })
+    
     -- ANIMATION SEQUENCE
     task.spawn(function()
+        task.wait(0.2)
+        
+        -- Step 1: Heart scales up (0.6s)
+        Tween(HeartContainer, {Size = UDim2.new(0, 120, 0, 120)}, 0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        
+        task.wait(0.4)
+        
+        -- Step 2: Title fades in (0.3s)
+        Tween(TitleText, {TextTransparency = 0}, 0.3, Enum.EasingStyle.Quad)
+        
         task.wait(0.3)
         
-        -- Step 1: Heart scales up
-        Tween(HeartContainer, {
-            Size = UDim2.new(0, 150, 0, 150)
-        }, 0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        -- Step 3: Stats boxes fade in (0.4s)
+        Tween(appsBox, {BackgroundTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
+        Tween(pagesBox, {BackgroundTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
+        Tween(controlsBox, {BackgroundTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
+        Tween(appsValue, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
+        Tween(pagesValue, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
+        Tween(controlsValue, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
+        Tween(appsLabel, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
+        Tween(pagesLabel, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
+        Tween(controlsLabel, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
         
-        task.wait(0.5)
+        task.wait(0.3)
         
-        -- Step 2: Title fades in
-        Tween(TitleText, {TextTransparency = 0}, 0.5, Enum.EasingStyle.Quad)
+        -- Step 4: Loading bar appears (0.2s)
+        Tween(LoadingBarBg, {BackgroundTransparency = 0}, 0.2, Enum.EasingStyle.Quad)
+        Tween(LoadingText, {TextTransparency = 0}, 0.2, Enum.EasingStyle.Quad)
         
         task.wait(0.2)
         
-        -- Step 3: Subtitle fades in
-        Tween(SubtitleText, {TextTransparency = 0}, 0.4, Enum.EasingStyle.Quad)
+        -- Step 5: Loading bar fills (1s)
+        Tween(LoadingBarFill, {Size = UDim2.new(1, 0, 1, 0)}, 1, Enum.EasingStyle.Quad)
         
-        task.wait(0.3)
+        task.wait(1.1)
         
-        -- Step 4: Loading bar appears
-        Tween(LoadingBarBg, {BackgroundTransparency = 0}, 0.3, Enum.EasingStyle.Quad)
+        -- Step 6: Everything fades out (0.4s)
+        Tween(Background, {BackgroundTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(HeartText, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(TitleText, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(appsBox, {BackgroundTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(pagesBox, {BackgroundTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(controlsBox, {BackgroundTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(appsValue, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(pagesValue, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(controlsValue, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(appsLabel, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(pagesLabel, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(controlsLabel, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(LoadingBarBg, {BackgroundTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(LoadingBarFill, {BackgroundTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
+        Tween(LoadingText, {TextTransparency = 1}, 0.4, Enum.EasingStyle.Quad)
         
-        task.wait(0.3)
-        
-        -- Step 5: Loading bar fills
-        Tween(LoadingBarFill, {Size = UDim2.new(1, 0, 1, 0)}, 1.2, Enum.EasingStyle.Quad)
-        
-        task.wait(1.3)
-        
-        -- Step 6: Everything fades out
-        Tween(Background, {BackgroundTransparency = 1}, 0.5, Enum.EasingStyle.Quad)
-        Tween(HeartText, {TextTransparency = 1}, 0.5, Enum.EasingStyle.Quad)
-        Tween(TitleText, {TextTransparency = 1}, 0.5, Enum.EasingStyle.Quad)
-        Tween(SubtitleText, {TextTransparency = 1}, 0.5, Enum.EasingStyle.Quad)
-        Tween(LoadingBarBg, {BackgroundTransparency = 1}, 0.5, Enum.EasingStyle.Quad)
-        Tween(LoadingBarFill, {BackgroundTransparency = 1}, 0.5, Enum.EasingStyle.Quad)
-        
-        task.wait(0.6)
+        task.wait(0.5)
         
         -- Clean up
         IntroGui:Destroy()
