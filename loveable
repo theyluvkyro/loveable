@@ -712,6 +712,13 @@ end
 function Loveable:ClosePage()
     -- Hide page
     self.PagesContainer.Visible = false
+    
+    -- Hide home container if it exists
+    if self.HomeContainer then
+        self.HomeContainer:Destroy()
+        self.HomeContainer = nil
+    end
+    
     self.CurrentPage = nil
     
     -- Show apps and search
@@ -885,17 +892,18 @@ function Loveable:PlayIntroAnimation()
         Parent = Background
     })
     
-    -- White Heart Image
-    local HeartImage = CreateInstance("ImageLabel", {
-        Name = "HeartImage",
+    -- White Heart Symbol
+    local HeartText = CreateInstance("TextLabel", {
+        Name = "HeartText",
         Size = UDim2.new(1, 0, 1, 0),
         Position = UDim2.new(0.5, 0, 0.5, 0),
         AnchorPoint = Vector2.new(0.5, 0.5),
         BackgroundTransparency = 1,
-        Image = "http://www.roblox.com/asset/?id=241778281",
-        ImageColor3 = Color3.fromRGB(255, 255, 255),
-        ImageTransparency = 0,
-        ScaleType = Enum.ScaleType.Fit,
+        Text = "♥",
+        TextSize = 120,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        Font = Enum.Font.GothamBold,
+        TextTransparency = 0,
         Parent = HeartContainer
     })
     
@@ -985,7 +993,7 @@ function Loveable:PlayIntroAnimation()
         
         -- Step 6: Everything fades out
         Tween(Background, {BackgroundTransparency = 1}, 0.5, Enum.EasingStyle.Quad)
-        Tween(HeartImage, {ImageTransparency = 1}, 0.5, Enum.EasingStyle.Quad)
+        Tween(HeartText, {TextTransparency = 1}, 0.5, Enum.EasingStyle.Quad)
         Tween(TitleText, {TextTransparency = 1}, 0.5, Enum.EasingStyle.Quad)
         Tween(SubtitleText, {TextTransparency = 1}, 0.5, Enum.EasingStyle.Quad)
         Tween(LoadingBarBg, {BackgroundTransparency = 1}, 0.5, Enum.EasingStyle.Quad)
@@ -1004,8 +1012,11 @@ function Loveable:PlayIntroAnimation()
 end
 
 function Loveable:OpenHomePage()
-    -- Open the UI
-    self:Open()
+    -- Open the UI if not already open
+    if not self.Opened then
+        self:Open()
+        task.wait(self.Config.Theme.AnimationDuration)
+    end
     
     -- Show home page if it exists
     if self.Config.HomePage then
@@ -1013,18 +1024,26 @@ function Loveable:OpenHomePage()
         self.AppsContainer.Visible = false
         self.SearchBar.Visible = false
         
-        -- Clear existing page content
-        for _, child in pairs(self.PagesContainer:GetChildren()) do
-            child:Destroy()
+        -- Create home content container in the left side
+        if self.HomeContainer then
+            self.HomeContainer:Destroy()
         end
         
-        -- Show pages container
-        self.PagesContainer.Visible = true
+        local theme = self.Config.Theme
+        self.HomeContainer = CreateInstance("Frame", {
+            Name = "HomeContainer",
+            Size = UDim2.new(0, theme.SearchBarWidth, 1, -140),
+            Position = UDim2.new(0, 20, 0, 20),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Parent = self.Panel
+        })
+        
         self.CurrentPage = "Home"
         
         -- Create home page content
         if self.Config.HomePage.CreateContent then
-            pcall(self.Config.HomePage.CreateContent, self.PagesContainer)
+            pcall(self.Config.HomePage.CreateContent, self.HomeContainer)
         end
     end
 end
