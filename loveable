@@ -124,7 +124,6 @@ function Loveable:Create(config)
         ShowBottomLabel = config.ShowBottomLabel ~= false,
         BottomLabelText = config.BottomLabelText or "Loveable",
         Key = config.Key, -- Optional key system
-        HomePage = config.HomePage, -- Optional home page content
     }
     
     -- Merge theme with defaults
@@ -531,26 +530,9 @@ function Loveable:CreateBottomBar()
         self.ControlsContainer.Size = UDim2.new(0, ControlsLayout.AbsoluteContentSize.X, 0, theme.ControlSize)
     end)
     
-    -- Add Home button if HomePage is configured
-    if self.Config.HomePage then
-        self:CreateControlButton({
-            Icon = "🏠",
-            Name = "Home",
-            Callback = function()
-                if self.CurrentPage == "Home" then
-                    -- Already on home, close it
-                    self:ClosePage()
-                else
-                    -- Open home page
-                    self:OpenHomePage()
-                end
-            end
-        }, 0)
-    end
-    
     -- Create bottom controls
     for index, controlData in ipairs(self.Config.BottomControls) do
-        self:CreateControlButton(controlData, index + (self.Config.HomePage and 1 or 0))
+        self:CreateControlButton(controlData, index)
     end
     
     -- Bottom label
@@ -940,17 +922,17 @@ function Loveable:PlayIntroAnimation()
         Parent = StatsContainer
     })
     
-    -- Helper to create stat boxes
+    -- Helper to create stat boxes (glass)
     local function createStatBox(label, value)
         local StatBox = CreateInstance("Frame", {
             Size = UDim2.new(0, 120, 0, 80),
-            BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
             BorderSizePixel = 0,
-            BackgroundTransparency = 1,
+            BackgroundTransparency = 0.95,
             Parent = StatsContainer
         })
         CreateCorner(StatBox, 10)
-        CreateStroke(StatBox, Color3.fromRGB(60, 60, 60), 1, 0.3)
+        CreateStroke(StatBox, Color3.fromRGB(255, 255, 255), 1, 0.9)
         
         local ValueLabel = CreateInstance("TextLabel", {
             Size = UDim2.new(1, 0, 0, 35),
@@ -970,7 +952,7 @@ function Loveable:PlayIntroAnimation()
             BackgroundTransparency = 1,
             Text = label,
             TextSize = 12,
-            TextColor3 = Color3.fromRGB(150, 150, 150),
+            TextColor3 = Color3.fromRGB(200, 200, 200),
             Font = Enum.Font.Gotham,
             TextTransparency = 1,
             Parent = StatBox
@@ -990,8 +972,8 @@ function Loveable:PlayIntroAnimation()
         Size = UDim2.new(0, 300, 0, 3),
         Position = UDim2.new(0.5, 0, 0.82, 0),
         AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-        BackgroundTransparency = 1,
+        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+        BackgroundTransparency = 0.9,
         BorderSizePixel = 0,
         Parent = Background
     })
@@ -1015,7 +997,7 @@ function Loveable:PlayIntroAnimation()
         BackgroundTransparency = 1,
         Text = "Loading...",
         TextSize = 12,
-        TextColor3 = Color3.fromRGB(150, 150, 150),
+        TextColor3 = Color3.fromRGB(200, 200, 200),
         Font = Enum.Font.Gotham,
         TextTransparency = 1,
         Parent = Background
@@ -1081,48 +1063,9 @@ function Loveable:PlayIntroAnimation()
         -- Clean up
         IntroGui:Destroy()
         
-        -- Show home page if configured
-        if self.Config.HomePage then
-            self:OpenHomePage()
-        end
-    end)
-end
-
-function Loveable:OpenHomePage()
-    -- Open the UI if not already open
-    if not self.Opened then
+        -- Open UI to show apps
         self:Open()
-        task.wait(self.Config.Theme.AnimationDuration)
-    end
-    
-    -- Show home page if it exists
-    if self.Config.HomePage then
-        -- Hide apps and search
-        self.AppsContainer.Visible = false
-        self.SearchBar.Visible = false
-        
-        -- Create home content container in the left side
-        if self.HomeContainer then
-            self.HomeContainer:Destroy()
-        end
-        
-        local theme = self.Config.Theme
-        self.HomeContainer = CreateInstance("Frame", {
-            Name = "HomeContainer",
-            Size = UDim2.new(0, theme.SearchBarWidth, 1, -140),
-            Position = UDim2.new(0, 20, 0, 20),
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            Parent = self.Panel
-        })
-        
-        self.CurrentPage = "Home"
-        
-        -- Create home page content
-        if self.Config.HomePage.CreateContent then
-            pcall(self.Config.HomePage.CreateContent, self.HomeContainer)
-        end
-    end
+    end)
 end
 
 function Loveable:SetupKeybind()
